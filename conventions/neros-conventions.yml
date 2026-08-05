@@ -1,0 +1,167 @@
+generated: '2026-08-04'
+method: searched
+source: https://github.com/Neros-Technologies/APEX/blob/main/spec/APEX_Core.md
+applies_to: APEX — Adaptive Payload EXchange, protocol_version V0, spec snapshot v0.8.0
+scope: >-
+  Cross-cutting request/response semantics of the APEX wire protocol. APEX is a UART
+  bus protocol between a drone flight controller (Host) and a payload (Device), not an
+  HTTP API — so the usual web conventions (pagination, sparse fields, expansion,
+  media types, idempotency keys) have no analogue here. What follows is the real
+  contract the specification defines.
+
+transport:
+  physical: 10-pin blade connector, modified V-lock mechanism
+  link: UART 8N1
+  default_baud: 115200
+  negotiable_baud:
+    0: 115200
+    1: 460800
+    2: 921600
+  negotiation_rule: >-
+    All sessions begin at 115,200 baud. Higher rates must be ACK'd by the host before
+    taking effect. A passthrough node must verify the rate locally, request at least
+    that rate upstream, and wait for the upstream ACK before ACKing downstream.
+  secondary_pins:
+    pins_3_4: [GPIO (default), I2C]
+    pins_7_8: [CVBS analog video (default), USB Full Speed]
+    selected_via: interface_flags_req bitfield in DEVICE_INFO
+
+framing:
+  scheme: COBS (Consistent Overhead Byte Stuffing)
+  delimiter: '0x00'
+  endianness: little-endian for all multi-byte fields
+  frame_layout: '[ Outer Header 4B ][ Inner Payload 0-255B ][ CRC 2B ]'
+  max_decoded_frame: 261    # APEX_V0_MAX_FRAME_LENGTH
+  max_encoded_frame: 264    # APEX_V0_MAX_ENCODED_FRAME_LENGTH (261 + 2 COBS overhead + 1 delimiter)
+  outer_header:
+  - field: protocol_version
+    size: u8
+    note: 0 = V0
+  - field: traffic_type
+    size: u8
+    note: 0 = CONFIG; all other values select a device class
+  - field: device_id
+    size: u8
+    note: 0x00 unassigned, 0xFF broadcast, 0x01-0xFE assigned
+  - field: payload_length
+    size: u8
+    note: 0-255; 0 is the implicit heartbeat
+
+integrity:
+  algorithm: CRC-16/CCITT-FALSE
+  polynomial: '0x1021'
+  init: '0xFFFF'
+  input_reflected: false
+  output_reflected: false
+  final_xor: '0x0000'
+  coverage: outer header + inner payload, in transmission order, computed before COBS encoding
+  on_mismatch: receiver MUST discard the frame
+
+addressing:
+  authority: >-
+    The root host is the sole authority for device_id assignment across the whole bus
+    tree, including devices reached through passthrough nodes.
+  assignment: host returns assigned_device_id in CONFIG_REPLY on ACK_OK
+  persistence: ephemeral per session; a device that resets returns to device_id 0x00 and re-discovers
+  recommended_strategy: monotonic counter from 0x01, skipping 0xFF
+  device_side_filter: >-
+    A device acts only on frames whose device_id is its own assigned ID, the broadcast
+    value 0xFF, or 0x00 during its own pre-discovery period. All others are dropped.
+
+discovery:
+  legs: 3
+  sequence: DEVICE_INFO (device to host) -> CONFIG_REPLY (host to device) -> CONFIG_ACK (device to host)
+  timeout: none — the device retransmits DEVICE_INFO indefinitely so a slow-booting host is never missed
+  retransmit_cadence: at least 1 Hz, no faster than 100 Hz
+  provisional_state: >-
+    On ACK_OK the host holds the slot in the provisional NEW state; it promotes to
+    CONNECTED only on receipt of CONFIG_ACK or any subsequent frame bearing the
+    assigned ID, so a lost CONFIG_ACK still connects within the heartbeat interval.
+  dedup: >-
+    While a provisional assignment is held, a repeated DEVICE_INFO with device_id 0
+    gets the SAME CONFIG_REPLY resent rather than a new slot allocated.
+  recycling: >-
+    A provisional slot silent for the 5 s watchdog window is freed. A CONNECTED slot
+    that misses the watchdog goes to FAULT and is freed a few seconds later.
+
+liveliness:
+  transmit_floor: each side MUST send at least one frame per second
+  watchdog: 5 s in both directions
+  margin: four consecutive dropped frames before recovery is triggered
+  implicit_heartbeat: a CONFIG frame (traffic_type = 0) with payload_length = 0 and no msg_id byte
+  host_recovery: >-
+    A host that sees no frame from a connected device in 5 s should cycle Pin 9 power
+    and re-attempt discovery; a host that cannot control Pin 9 should mark the device
+    FAULT and surface that to the operator.
+  device_recovery: a device that sees no host frame in 5 s returns to its initial state and re-discovers
+
+versioning:
+  field: protocol_version in the outer header
+  current: V0 (protocol_version = 0)
+  spec_snapshot: v0.8.0
+  session_rule: once CONNECTED at a version, every frame in that session uses that version; changing version requires reset and re-discovery
+  negotiation_burden: on the device — it attempts its highest supported version first and falls back on ACK_REJECT_VERSION
+  host_rule: hosts always accept the highest version they support and never request a downgrade
+  unknown_version: drop the frame without acting on it; for DEVICE_INFO reply ACK_REJECT_VERSION
+
+error_envelope:
+  style: none — APEX V0 defines no NACK frame
+  default_rule: drop the frame silently and resume listening
+  escalation: sustained failure is caught by the 5 s heartbeat watchdog, not by per-frame errors
+  single_frame_rule: a single malformed or unexpected frame MUST NOT transition the receiver to FAULT
+  rejection_channel: >-
+    The only negative response in the protocol is the CONFIG_REPLY ack byte during
+    discovery (ACK_REJECT_CLASS / ACK_REJECT_INTERFACE / ACK_REJECT_VERSION). The spec
+    directs hosts to surface the reason to the operator, since a device that fails
+    discovery has no other channel to explain why.
+  catalog: errors/neros-apex-status-codes.yml
+
+routing:
+  topology: logically point-to-point UART, with optional passthrough (hub) nodes and multi-class devices
+  by: device_id in the outer header
+  broadcast: device_id 0xFF — the passthrough processes locally AND forwards to all downstream ports
+  upstream: frames from a downstream port are forwarded unchanged; the passthrough MUST NOT rewrite device_id
+  passthrough_precondition: a passthrough must complete its own discovery and reach ACK_OK before forwarding anything
+  multi_class: >-
+    A device implementing more than one class discovers serially, one class at a time,
+    with never more than one DEVICE_INFO in flight; after the first class is configured,
+    interface_flags_req for subsequent classes MUST be 0x00.
+
+not_applicable:
+  reason: APEX is a UART wire protocol, not an HTTP API.
+  conventions:
+  - pagination
+  - field expansion / sparse fieldsets
+  - request-id tracing headers
+  - content negotiation / media types
+  - idempotency keys
+  - rate-limit signaling
+  idempotency_note: >-
+    APEX defines no idempotency contract. Retransmission safety is handled structurally
+    instead: DEVICE_INFO is retried indefinitely and deduped against a held provisional
+    slot, and CONFIG_ACK is confirmed by any subsequent frame carrying the assigned ID.
+    No `Idempotency` pointer is wired in apis.yml because there is no idempotency key.
+
+security_note: >-
+  APEX V0 defines no authentication, authorization, encryption, or message
+  integrity beyond the CRC-16 error check. The trust boundary is the physical
+  connector: any device that can mate with the carrier can complete discovery.
+  No `Authentication` artifact or pointer is emitted for this provider because the
+  protocol declares no security scheme to document.
+
+cross_links:
+  errors: errors/neros-apex-status-codes.yml
+  lifecycle: lifecycle/neros-lifecycle.yml
+  data_model: data-model/neros-data-model.yml
+  conformance: conformance/neros-conformance.yml
+  sandbox: sandbox/neros-sandbox.yml
+
+x-evidence:
+  fetched: '2026-08-04'
+  sources:
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/spec/APEX_Core.md
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/spec/APEX_Device_Classes.md
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/lib/README.md
+    http_status: 200

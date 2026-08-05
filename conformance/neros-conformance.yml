@@ -1,0 +1,131 @@
+generated: '2026-08-04'
+method: searched
+source: >-
+  https://www.neros.tech/ and
+  https://github.com/Neros-Technologies/APEX/blob/main/spec/APEX_Core.md
+notes: >-
+  Two distinct kinds of claim are recorded here. The `standards` block is what the APEX
+  protocol conforms to or references at the wire and mechanical level. The
+  `defense_compliance` block is Neros' published product-level compliance posture for
+  its drone hardware, which is what the `Compliance` pointer in apis.yml refers to.
+  The usual web-API standards families (OAuth 2.0, OIDC, FAPI, SCIM, OData, FHIR,
+  PSD2, JSON:API, RFC 9457) are recorded as not applicable rather than false — Neros
+  ships no HTTP API, so those denominators do not apply.
+
+standards:
+- id: cobs
+  name: Consistent Overhead Byte Stuffing
+  conforms: true
+  evidence: 'APEX_Core.md §3: framing is COBS, frames delimited by 0x00'
+- id: crc-16-ccitt-false
+  name: CRC-16/CCITT-FALSE
+  conforms: true
+  evidence: >-
+    APEX_Core.md §3.1.2: polynomial 0x1021, init 0xFFFF, no input/output reflection,
+    final XOR 0x0000; implemented in lib/src/apex_crc.c
+- id: c99
+  name: ISO/IEC 9899:1999 (C99)
+  conforms: true
+  evidence: 'lib/README.md: "Pure C99, no dynamic allocation, no stdio, no platform headers"'
+- id: mavlink-2
+  name: MAVLink 2
+  conforms: interoperates
+  evidence: >-
+    APEX Device Class — Analog HMI carries control packets in CRSF / MAVLink 2 form.
+    APEX transports these; it does not redefine them.
+- id: crsf
+  name: Crossfire (CRSF) protocol
+  conforms: interoperates
+  evidence: APEX Device Class — Analog HMI accepts CRSF control packets
+- id: cvbs
+  name: CVBS composite analog video
+  conforms: true
+  evidence: 'APEX_Core.md §2: pins 7 and 8 carry CVBS+/CVBS-; selectable via interface_flags_req'
+- id: usb-full-speed
+  name: USB Full Speed
+  conforms: partial
+  evidence: >-
+    Pins 7/8 are selectable as USB D+/D-; traffic_type 5 (USB_FS_HUB) is reserved in the
+    device-class registry with its specification marked TBD.
+- id: i2c
+  name: I2C
+  conforms: true
+  evidence: 'APEX_Core.md §2/§5.3: pins 3 and 4 selectable as I2C SDA/SCL'
+- id: ipc-2221a
+  name: IPC-2221A
+  conforms: referenced
+  evidence: >-
+    APEX_Core.md §2 reasons about 8S LiPo voltages against IPC-2221A B1 continuous-curve
+    interpolation with 0.4 mm clearance and creepage.
+- id: iec-60664-1
+  name: IEC 60664-1
+  conforms: referenced
+  evidence: >-
+    APEX_Core.md §2 notes B1 assumptions, and that conformal coating of non-mating
+    connector surfaces is a path to full compliance at Pollution Degree 2 or 3.
+- id: step-iso-10303
+  name: STEP (ISO 10303) CAD exchange
+  conforms: true
+  evidence: spec/mechanical/APEX STANDARD V0.7.STEP published alongside the 2D PDF drawing
+- id: mit-license
+  name: MIT License
+  conforms: true
+  evidence: LICENSE at the repository root; both the specification and the reference library are MIT
+
+not_applicable:
+  reason: Neros publishes no HTTP API, so these families have no surface to conform to.
+  standards:
+  - oauth2
+  - openid-connect
+  - fapi
+  - scim-2.0
+  - odata
+  - json-api
+  - rfc9457-problem-details
+  - fhir
+  - psd2
+  - openapi
+  - asyncapi
+
+defense_compliance:
+  note: >-
+    Product-level compliance published by Neros for its drone hardware. This is the
+    posture the apis.yml `Compliance` pointer refers to; it is not a claim about the
+    APEX protocol.
+  programs:
+  - id: blue-uas
+    name: DIU Blue UAS Cleared List
+    status: listed
+    scope: ARCHER platform
+    evidence: >-
+      Neros' own homepage states ARCHER is "Mass produced with a secure supply chain and
+      BlueUAS certified." Blue UAS is the U.S. Defense Innovation Unit vetting path that
+      maintains a cleared list of commercial systems assessed for government use.
+    authority_url: https://www.diu.mil/latest/blue-uas-refresh-list-and-framework-platforms-and-capabilities-selected
+    provider_url: https://www.neros.tech/
+  - id: ndaa-section-848
+    name: NDAA compliance (no covered Chinese components)
+    status: claimed
+    scope: ARCHER family, including Archer Fiber
+    evidence: >-
+      Neros markets Archer Fiber as NDAA-compliant, examined for critical components
+      originating in China. Vertically integrated, U.S.-based production and a secured
+      supply chain are the company's stated basis for the claim.
+    provider_url: https://www.neros.tech/
+  no_published_certifications:
+    note: >-
+      No SOC 2, ISO 27001, PCI DSS, HIPAA, FedRAMP or CSA STAR attestation is published.
+      Neros ships hardware, not a SaaS platform; no trust center exists at
+      trust.neros.tech or security.neros.tech (neither resolves in DNS).
+
+x-evidence:
+  fetched: '2026-08-04'
+  sources:
+  - url: https://www.neros.tech/
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/spec/APEX_Core.md
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/spec/APEX_Device_Classes.md
+    http_status: 200
+  - url: https://trust.neros.tech/
+    http_status: 000

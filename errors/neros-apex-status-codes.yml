@@ -1,0 +1,115 @@
+generated: '2026-08-04'
+method: searched
+source: https://github.com/Neros-Technologies/APEX
+format: none
+format_note: >-
+  Not RFC 9457. APEX is a UART wire protocol with no HTTP status codes and no NACK
+  frame. This catalog records the three real, published error surfaces the protocol
+  and its reference implementation define: the library return-code enum, the discovery
+  rejection codes carried on CONFIG_REPLY, and the receiver drop rules.
+applies_to: APEX — Adaptive Payload EXchange, protocol_version V0, spec snapshot v0.8.0
+
+library_status_codes:
+  source: lib/include/apex/apex_status.h
+  type: apex_status_t
+  url: https://github.com/Neros-Technologies/APEX/blob/main/lib/include/apex/apex_status.h
+  codes:
+  - code: 0
+    name: APEX_OK
+    meaning: Success.
+  - code: -1
+    name: APEX_ERR_INVALID_ARGS
+    meaning: Caller passed an invalid argument (null pointer, out-of-range value).
+    action: Fix the call site; not a wire condition.
+  - code: -2
+    name: APEX_ERR_BUFFER_TOO_SMALL
+    meaning: The supplied buffer cannot hold the result.
+    action: >-
+      Size on-wire buffers to APEX_V0_MAX_ENCODED_FRAME_LENGTH (264 bytes) and
+      decoded-frame buffers to APEX_V0_MAX_FRAME_LENGTH (261 bytes).
+  - code: -3
+    name: APEX_ERR_MALFORMED
+    meaning: Frame could not be parsed — COBS decode failure or an inconsistent payload_length.
+    action: Drop the frame and resume reception from the next 0x00 delimiter.
+  - code: -4
+    name: APEX_ERR_BAD_CRC
+    meaning: Computed CRC-16/CCITT-FALSE does not match the transmitted value.
+    action: Discard the frame. Persistent occurrence points at signal integrity near motors/ESCs.
+  - code: -5
+    name: APEX_ERR_UNSUPPORTED
+    meaning: Unknown protocol_version, traffic_type, or an unsupported feature.
+    action: Drop. For DEVICE_INFO the host replies ACK_REJECT_VERSION so the device can fall back.
+  - code: -6
+    name: APEX_ERR_BAD_STATE
+    meaning: Operation is not valid in the current host/device state machine state.
+    action: Re-run the discovery handshake from the initial state.
+  - code: -7
+    name: APEX_ERR_NOT_FOUND
+    meaning: No device slot matches the requested device_id.
+    action: Host-side; signals a device that reset without re-discovering.
+  - code: -8
+    name: APEX_ERR_FULL
+    meaning: The host device table has no free slot.
+    action: >-
+      Wait for slot recycling — provisional slots are freed after the 5 s watchdog
+      window and FAULT slots a few seconds after the fault.
+
+discovery_rejection_codes:
+  source: spec/APEX_Core.md §3.2.2 CONFIG_REPLY
+  carried_on: CONFIG_REPLY (traffic_type 0, msg_id 2), field `ack` (u8)
+  url: https://github.com/Neros-Technologies/APEX/blob/main/spec/APEX_Core.md
+  codes:
+  - code: '0x00'
+    name: ACK_OK
+    meaning: Host accepts the requested class and interface flags.
+    action: Device adopts assigned_device_id and MUST confirm with CONFIG_ACK.
+  - code: '0x01'
+    name: ACK_REJECT_CLASS
+    meaning: Host does not support the requested device_class_req.
+    action: Device should NOT retry the same DEVICE_INFO.
+  - code: '0x02'
+    name: ACK_REJECT_INTERFACE
+    meaning: Host supports the class but cannot grant the requested interface_flags_req.
+    action: Device may retry DEVICE_INFO with reduced flags.
+  - code: '0x03'
+    name: ACK_REJECT_VERSION
+    meaning: Host does not support the requested protocol_version.
+    action: Device may retry at a lower version it supports.
+  unknown_value_rule: A device receiving an unenumerated ack value MUST treat it as ACK_REJECT_CLASS.
+  operator_visibility: >-
+    On any reject the host SHOULD surface the reason to the operator — a device that
+    fails discovery has no other channel to explain why.
+  reject_field_rule: assigned_device_id is 0x0000 on any reject.
+
+receiver_drop_rules:
+  source: spec/APEX_Core.md §3.8 Receiver Error Handling
+  default: Drop the frame silently and resume listening. APEX V0 has no NACK frames.
+  invariant: A single malformed or unexpected frame MUST NOT transition the receiver to FAULT.
+  rules:
+  - condition: COBS decode failure
+    action: Drop. Resume reception from the next 0x00 delimiter.
+  - condition: CRC mismatch
+    action: Drop.
+  - condition: Unknown protocol_version
+    action: Drop. For DEVICE_INFO the host replies ACK_REJECT_VERSION.
+  - condition: Unknown traffic_type
+    action: Drop. Host MAY log for diagnostics.
+  - condition: payload_length exceeds the buffer or is inconsistent with the received frame length
+    action: Drop. Indistinguishable from a corrupted header.
+  - condition: Frame from an unknown device_id (host side, post-discovery)
+    action: Drop. Host SHOULD log — signals a device that reset without re-discovering.
+  - condition: Frame from device_id 0x00 outside the discovery path (host side, post-discovery)
+    action: Drop. The only legal use of 0x00 as a sender ID is DEVICE_INFO from an unassigned device.
+  logging: implementation-defined and outside the wire protocol
+
+fault_states:
+  note: Device-level failure is expressed through the lifecycle status, not an error frame.
+  see: lifecycle/neros-lifecycle.yml
+
+x-evidence:
+  fetched: '2026-08-04'
+  sources:
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/lib/include/apex/apex_status.h
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/spec/APEX_Core.md
+    http_status: 200

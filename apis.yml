@@ -1,18 +1,65 @@
 aid: neros
 name: Neros
-description: 'Neros is a company surfaced via the API Evangelist harvest backlog (source: secondary-market)
-  and added to the network as a stub for full-pipeline profiling.'
+description: 'Neros Technologies is an American defense manufacturer founded in 2023
+  and headquartered in El Segundo, California, that designs and mass-produces low-cost,
+  attritable first-person-view (FPV) drones and ground control stations for Western
+  military forces. Its product line includes the ARCHER FPV airframe, ARCHER STRIKE,
+  and the CROSSBOW and LONGBOW ground control stations, built on in-house flight control,
+  powertrain, and radio hardware for electronic-warfare resistance. Neros publishes
+  no public web API; its machine-readable interface contribution is APEX (Adaptive
+  Payload EXchange), an open, MIT-licensed, plug-and-play UART protocol and mechanical
+  connector standard for drone host/payload interoperability, with a C99 reference
+  implementation and a hardware development kit published on GitHub.'
 url: https://raw.githubusercontent.com/api-evangelist/neros/refs/heads/main/apis.yml
+image: https://cdn.prod.website-files.com/65c24ca07768af3ed05a9982/65c28f5597ed1e93b45a67a3_webclip.png
 x-type: company
 x-source: harvest:secondary-market
-x-tier: stub
-x-tier-reason: harvest
 specificationVersion: '0.20'
 created: '2026-08-04'
 modified: '2026-08-04'
 tags:
 - Company
-apis: []
+- Defense
+- Drones
+- Unmanned Systems
+- UAV
+- Aerospace
+- Robotics
+- Hardware
+- Manufacturing
+- Protocols
+- Open Source
+- Embedded
+apis:
+- aid: neros:apex
+  name: APEX — Adaptive Payload EXchange
+  description: 'APEX is Neros Technologies'' open, MIT-licensed plug-and-play protocol
+    for connecting drone platforms (hosts) and payloads (devices) over a standard
+    10-pin connector. The core protocol is class-agnostic — COBS framing, a 4-byte
+    outer header, CRC-16/CCITT-FALSE, baud negotiation, a three-leg discovery handshake
+    (DEVICE_INFO to CONFIG_REPLY to CONFIG_ACK), capability exchange, and a device
+    lifecycle the host tracks — while payload behavior is defined in separate device-class
+    specifications (Activation, Analog HMI, Wayfinding, Repeater; USB_FS_HUB reserved).
+    It is a UART wire protocol, not an HTTP API: there is no base URL, no authentication
+    scheme, and no hosted endpoint.'
+  humanURL: https://github.com/Neros-Technologies/APEX
+  x-transport: uart
+  x-protocol-version: V0
+  x-spec-version: v0.8.0
+  x-status: draft
+  tags:
+  - Protocol
+  - Drones
+  - Payloads
+  - Embedded
+  - Interoperability
+  properties:
+  - type: SourceCode
+    url: https://github.com/Neros-Technologies/APEX
+  - type: Specification
+    url: https://github.com/Neros-Technologies/APEX/blob/main/spec/APEX_Core.md
+  - type: License
+    url: https://github.com/Neros-Technologies/APEX/blob/main/LICENSE
 maintainers:
 - FN: Kin Lane
   email: kin@apievangelist.com
@@ -20,4 +67,43 @@ maintainers:
   email: info@apis.io
 common:
 - type: Website
+  url: https://www.neros.tech/
+- type: GitHubOrganization
+  url: https://github.com/Neros-Technologies
+- type: Blog
+  url: https://www.neros.tech/news
+- type: Support
+  url: mailto:info@neros.tech
+- type: PrivacyPolicy
+  url: https://www.neros.tech/legal/privacy-policy
+- type: SecondaryMarket
   url: https://forgeglobal.com/neros_stock/
+- type: Packages
+  url: packages/neros-packages.yml
+- type: SDKs
+  url: packages/neros-packages.yml
+- type: Conventions
+  url: conventions/neros-conventions.yml
+- type: ErrorCatalog
+  url: errors/neros-apex-status-codes.yml
+- type: Lifecycle
+  url: lifecycle/neros-lifecycle.yml
+- type: ChangeLog
+  url: changelog/neros-changelog.yml
+- type: DataModel
+  url: data-model/neros-data-model.yml
+- type: Conformance
+  url: conformance/neros-conformance.yml
+- type: Compliance
+  url: conformance/neros-conformance.yml
+- type: Sandbox
+  url: sandbox/neros-sandbox.yml
+- type: LLMsTxt
+  url: llms/neros-llms.txt
+- type: DomainSecurity
+  url: security/neros-domain-security.yml
+x-enrichment:
+  date: '2026-08-04'
+  status: enriched
+  artifacts_added: 11
+  pass: local-v1

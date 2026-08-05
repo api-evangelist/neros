@@ -1,0 +1,99 @@
+generated: '2026-08-04'
+method: searched
+source: https://github.com/Neros-Technologies
+notes: >-
+  Neros publishes no client library on npm, PyPI, Maven Central, NuGet, pkg.go.dev,
+  RubyGems, Packagist or crates.io (all probed, no first-party package found). Its
+  first-party libraries are distributed as source from the Neros-Technologies GitHub
+  organization and consumed either as drop-in C source, a static library built by a
+  Makefile, or a Bazel module.
+registries_probed:
+- registry: npm
+  query: neros
+  result: no first-party package
+- registry: pypi
+  names: [neros, neros-sdk, nerostech]
+  result: 404
+- registry: github
+  org: Neros-Technologies
+  result: hit
+packages:
+- language: c
+  registry: github
+  name: APEX reference implementation (libapex)
+  url: https://github.com/Neros-Technologies/APEX/tree/main/lib
+  repository: https://github.com/Neros-Technologies/APEX
+  install: make            # produces build/libapex.a
+  distribution: source
+  license: MIT
+  official: true
+  description: >-
+    Portable C99 reference implementation of the APEX protocol, implementing both the
+    Host and Device roles for Core (COBS framing, CRC-16/CCITT-FALSE, outer-header
+    pack/unpack, discovery, device table + lifecycle, 1 Hz heartbeat / 5 s watchdog,
+    NAME_REQUEST/NAME_REPLY, HOST_STATE broadcast) and the Activation device class.
+    No dynamic allocation, no stdio, no platform headers, no third-party dependencies.
+  headers:
+  - apex.h
+  - apex/apex_core.h
+  - apex/apex_cobs.h
+  - apex/apex_crc.h
+  - apex/apex_framer.h
+  - apex/apex_host.h
+  - apex/apex_device.h
+  - apex/apex_activation.h
+  - apex/apex_analog_hmi.h
+  - apex/apex_repeater.h
+  - apex/apex_status.h
+  consumption:
+  - static library (make; gcc my_app.c -Iapex/include -Lapex/build -lapex)
+  - drop-in source into flight-controller firmware
+  - cross-compile via make CC=arm-none-eabi-gcc AR=arm-none-eabi-ar
+- language: c
+  registry: github
+  name: apex_devkit
+  url: https://github.com/Neros-Technologies/apex_devkit
+  repository: https://github.com/Neros-Technologies/apex_devkit
+  install: bazel build //...
+  distribution: source
+  build_system: bazel
+  license: MIT
+  official: true
+  description: >-
+    Development tools for rapid iteration on APEX payloads and hosts. Ships an STM32G0
+    host emulator and a reference device firmware, ARM toolchain wiring, and a
+    third_party/apex Bazel dependency on the APEX library.
+- language: starlark
+  registry: github
+  name: bazel_armclang
+  url: https://github.com/Neros-Technologies/bazel_armclang
+  repository: https://github.com/Neros-Technologies/bazel_armclang
+  distribution: source
+  official: true
+  description: ARM toolchain for embedded Bazel integration, used by apex_devkit.
+forks:
+  note: >-
+    The Neros-Technologies GitHub organization also carries forks of third-party
+    projects. They are not first-party libraries and are recorded here only so the
+    org inventory is complete.
+  repositories:
+  - name: ExpressLRS-Hardware
+    upstream: ExpressLRS
+    url: https://github.com/Neros-Technologies/ExpressLRS-Hardware
+  - name: NELRS
+    upstream: ExpressLRS
+    url: https://github.com/Neros-Technologies/NELRS
+  - name: Colosseum
+    upstream: Colosseum / AirSim
+    url: https://github.com/Neros-Technologies/Colosseum
+x-evidence:
+  fetched: '2026-08-04'
+  sources:
+  - url: https://api.github.com/orgs/neros-technologies
+    http_status: 200
+  - url: https://api.github.com/orgs/neros-technologies/repos
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/lib/README.md
+    http_status: 200
+  - url: https://pypi.org/pypi/neros/json
+    http_status: 404

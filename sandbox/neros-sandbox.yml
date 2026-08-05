@@ -1,0 +1,100 @@
+generated: '2026-08-04'
+method: searched
+source: https://github.com/Neros-Technologies/apex_devkit
+applies_to: APEX — Adaptive Payload EXchange
+notes: >-
+  Neros publishes no hosted sandbox, no test API keys and no test/live mode separation —
+  it has no HTTP API. What it does publish is the hardware equivalent: a development kit
+  with a host emulator and a reference device firmware, plus a unit-test suite that
+  replays the byte-level worked examples from the specification. Every value below is
+  taken verbatim from the published repositories; none was invented.
+
+kind: hardware development kit + emulator + conformance test suite
+
+devkit:
+  name: apex_devkit
+  url: https://github.com/Neros-Technologies/apex_devkit
+  license: MIT
+  build_system: bazel
+  description: Development tools for rapid iteration on APEX payloads and hosts.
+  targets:
+  - name: host_emulator
+    role: Host
+    path: host_emulator/
+    mcu: STM32G071xx (STM32G0 series)
+    description: >-
+      Firmware that emulates the drone-side APEX host so a payload can be brought up
+      without a flight controller. Wires UART, DMA, DAC and GPIO against the ST HAL and
+      drives apex_host_app.
+  - name: reference_device
+    role: Device
+    path: reference_device/
+    mcu: STM32G071xx (STM32G0 series)
+    description: >-
+      Firmware that implements the payload side of APEX, so a host implementation can be
+      brought up against a known-good device. Wires UART, DMA, ADC and GPIO and drives
+      apex_dev_app.
+  toolchain:
+  - bazel_armclang — ARM toolchain for embedded Bazel integration (https://github.com/Neros-Technologies/bazel_armclang)
+  - third_party/stm32 — CMSIS core, CMSIS device G0, STM32G0xx HAL driver
+  dependency: third_party/apex — the APEX reference library
+
+test_suite:
+  path: https://github.com/Neros-Technologies/APEX/tree/main/lib/test
+  framework: GoogleTest
+  run: make test
+  fixture_note: >-
+    The suite "mirrors the byte-level worked example from
+    APEX_Device_Class_Activation.md §9.4" — the specification's own worked frames are
+    the test fixtures, so the spec and the implementation are checked against one
+    another rather than against invented data.
+  tests:
+  - test_activation_gpio.cc
+  - test_activation_walkthrough.cc
+  - test_analog_hmi.cc
+  - test_cobs.cc
+  - test_crc.cc
+  - test_discovery.cc
+  - test_framer.cc
+  - test_repeater.cc
+
+simulation:
+  name: Colosseum
+  url: https://github.com/Neros-Technologies/Colosseum
+  upstream: Colosseum / AirSim
+  first_party: false
+  note: >-
+    A fork in the Neros GitHub organization of the open-source Unreal Engine simulator
+    for autonomous robotics. Recorded because it is part of the org's public tooling; it
+    is not a Neros-authored product and carries no Neros-specific test fixtures.
+
+published_test_values:
+  note: >-
+    The specification publishes worked frame examples in hex, using a documented notation
+    (protocol_version / traffic_type / device_id / payload_length, then the inner payload)
+    with the CRC and COBS framing applied by the sender and omitted from the byte lines.
+    Those frames live in spec/APEX_Core.md §3.1.5 and the device-class specs, and are
+    reproduced by the test suite rather than duplicated here.
+  reserved_values:
+  - {value: '0x00', field: device_id, meaning: unassigned — the value a device uses before the host assigns one}
+  - {value: '0xFF', field: device_id, meaning: broadcast — host-originated frames to all devices}
+  - {value: '115200', field: baud, meaning: the rate every session starts at}
+
+no_hosted_sandbox:
+  reason: no HTTP API
+  test_live_separation: not applicable — no API keys are issued
+  probed:
+  - url: https://api.neros.tech/
+    status: 000
+  - url: https://developer.neros.tech/
+    status: 000
+
+x-evidence:
+  fetched: '2026-08-04'
+  sources:
+  - url: https://api.github.com/repos/Neros-Technologies/apex_devkit/git/trees/HEAD?recursive=1
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/lib/README.md
+    http_status: 200
+  - url: https://api.github.com/repos/Neros-Technologies/APEX/git/trees/HEAD?recursive=1
+    http_status: 200

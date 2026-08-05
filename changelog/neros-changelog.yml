@@ -1,0 +1,55 @@
+generated: '2026-08-04'
+method: searched
+source: https://github.com/Neros-Technologies/APEX/commits/main
+applies_to: APEX — Adaptive Payload EXchange
+notes: >-
+  Neros publishes no CHANGELOG file, no GitHub Releases (0) and no tags (0) on the APEX
+  repository. The real, dated version history is the release-commit series on main,
+  each of which advances VERSION.txt. That commit series is what is captured here — the
+  live repository remains the source of truth.
+
+scheme: semver-ish snapshot (specification documents and the C reference implementation are versioned together)
+current_version: v0.8.0
+version_file: https://github.com/Neros-Technologies/APEX/blob/main/VERSION.txt
+release_mechanism: dated release commits on main
+github_releases: 0
+github_tags: 0
+
+entries:
+- version: v0.8.0
+  date: '2026-07-15'
+  title: 'Sync to v0.8.0: publish full source mirror, add Activation host conditions'
+  breaking: unknown
+  highlights:
+  - Full C reference-implementation source mirror published under lib/
+  - Activation device class gains host-side conditions
+- version: v0.7.0
+  date: '2026-06-18'
+  title: APEX Standard Release v0.7.0
+  breaking: unknown
+  highlights:
+  - Mechanical standard package published as APEX STANDARD V0.7 (STEP model + PDF drawing)
+- version: v0.6.0
+  date: '2026-06-04'
+  title: APEX Standard Release v0.6.0
+  breaking: unknown
+  highlights:
+  - First public release of the APEX standard on GitHub (repository created 2026-06-02)
+
+company_news:
+  note: >-
+    Neros also publishes a dated company news stream, which is a corporate-announcement
+    feed rather than a product changelog. It is wired in apis.yml as `Blog`.
+  url: https://www.neros.tech/news
+
+x-evidence:
+  fetched: '2026-08-04'
+  sources:
+  - url: https://api.github.com/repos/Neros-Technologies/APEX/commits
+    http_status: 200
+  - url: https://api.github.com/repos/Neros-Technologies/APEX/releases
+    http_status: 200
+    result: empty array
+  - url: https://api.github.com/repos/Neros-Technologies/APEX/tags
+    http_status: 200
+    result: empty array

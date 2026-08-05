@@ -1,0 +1,132 @@
+generated: '2026-08-04'
+method: searched
+source: https://github.com/Neros-Technologies/APEX
+applies_to: APEX — Adaptive Payload EXchange
+
+versioning:
+  scheme: in-band protocol version byte + a jointly-versioned spec/implementation snapshot
+  protocol_version_field: outer header byte 0
+  current_protocol_version: V0 (protocol_version = 0)
+  spec_snapshot: v0.8.0
+  snapshot_source: https://github.com/Neros-Technologies/APEX/blob/main/VERSION.txt
+  snapshot_rule: >-
+    The specification documents and the C reference implementation are versioned
+    together as one snapshot; the current version is recorded in VERSION.txt.
+  status: draft
+  status_statement: >-
+    "Status: Draft. These specifications are under active development and may change.
+    Mechanical and electrical details are still being finalized." — APEX README.
+  docs: https://github.com/Neros-Technologies/APEX/blob/main/spec/APEX_Core.md
+
+version_negotiation:
+  mechanism: >-
+    A device attempts DEVICE_INFO at its highest supported protocol_version first. If
+    the host does not support it, the host replies ACK_REJECT_VERSION (ack = 0x03) and
+    the device falls back to the next-lower version it supports.
+  burden: on the device — hosts always accept the highest version they support and never request a downgrade
+  session_rule: once CONNECTED at a version, every frame in that session uses that version; changing version requires a reset and re-discovery
+  unknown_version_rule: a frame whose protocol_version the receiver does not support MUST be dropped without acting on its contents
+
+deprecation:
+  policy_url: null
+  sunset_header: false
+  note: >-
+    No deprecation or sunset policy is published. The protocol is at V0 and pre-1.0, and
+    the README states the specs may change. USB_FS_HUB (traffic_type 5) is reserved with
+    its spec marked TBD, and two areas — passthrough/hub nodes and baud-rate negotiation —
+    carry explicit "Open" markers in the spec. No `Deprecation` pointer is wired in
+    apis.yml because there is no deprecation policy to point at.
+
+status_page:
+  url: null
+  probed:
+  - url: https://status.neros.tech/
+    status: 000   # DNS does not resolve
+  note: >-
+    No status page. No `StatusPage` pointer is wired in apis.yml.
+
+sla:
+  url: null
+  note: No public SLA. Neros sells hardware to military customers; commercial terms are not published.
+
+device_lifecycle:
+  source: spec/APEX_Core.md §4 Device Lifecycle Status
+  type: ApexV0DeviceStatus_t
+  scope: host-tracked, device-level; distinct from any class-specific state machine
+  states:
+  - value: '0x00'
+    name: UNKNOWN
+    meaning: No information available for this device slot (empty / recycled).
+  - value: '0x01'
+    name: NEW
+    meaning: >-
+      Provisional. The host has assigned a device_id and replied ACK_OK, but the device
+      has not yet confirmed the latch. The slot is reserved, not committed; no class
+      traffic flows. A NEW slot whose device never confirms is recycled.
+  - value: '0x02'
+    name: CONNECTED
+    meaning: Device has confirmed its ID and is ready to receive class-specific commands.
+  - value: '0x03'
+    name: EXPENDED
+    meaning: Device has signaled it is expended; heartbeat tracking may be disabled.
+  - value: '0xFF'
+    name: FAULT
+    meaning: >-
+      Device fault — missed heartbeats or another error condition. The host frees a
+      FAULT slot a few seconds later so its device_id returns to the pool.
+  transitions:
+  - from: UNKNOWN
+    to: NEW
+    trigger: host assigns a device_id and replies ACK_OK to DEVICE_INFO
+  - from: NEW
+    to: CONNECTED
+    trigger: host receives CONFIG_ACK, or any subsequent frame bearing the assigned ID
+  - from: NEW
+    to: UNKNOWN
+    trigger: device silent for the 5 s watchdog window — slot recycled
+  - from: CONNECTED
+    to: FAULT
+    trigger: missed 5 s heartbeat watchdog
+  - from: CONNECTED
+    to: EXPENDED
+    trigger: device signals it is expended
+  - from: FAULT
+    to: UNKNOWN
+    trigger: host frees the slot (recommended >= 5 s after the fault)
+
+implementation_maturity:
+  source: lib/README.md — "Scope of v1"
+  complete:
+  - COBS framing, CRC-16/CCITT-FALSE
+  - Outer header pack/unpack
+  - Host discovery + device table + lifecycle (NEW -> CONNECTED -> EXPENDED / FAULT)
+  - Device discovery + 1 Hz heartbeat + 5 s watchdog
+  - NAME_REQUEST / NAME_REPLY
+  - HOST_STATE broadcast
+  - Activation class — Device state machine + COMMAND/ACK/STATUS/CAPABILITY
+  - Activation class — Host driver
+  - Multi-class on a single link (host side)
+  not_implemented:
+  - feature: Passthrough / hub nodes
+    reason: spec marks the area as not well defined
+  - feature: Baud-rate negotiation
+    reason: spec does not define a CONFIG message for this yet
+
+device_class_registry_status:
+  see: data-model/neros-data-model.yml
+  reserved_pending_spec:
+  - traffic_type: 5
+    name: USB_FS_HUB
+    spec: TBD
+
+x-evidence:
+  fetched: '2026-08-04'
+  sources:
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/VERSION.txt
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/README.md
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/spec/APEX_Core.md
+    http_status: 200
+  - url: https://status.neros.tech/
+    http_status: 000

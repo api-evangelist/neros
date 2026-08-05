@@ -1,0 +1,150 @@
+generated: '2026-08-04'
+method: derived
+source: >-
+  https://github.com/Neros-Technologies/APEX — spec/APEX_Core.md,
+  spec/APEX_Device_Classes.md, lib/include/apex/
+applies_to: APEX — Adaptive Payload EXchange, protocol_version V0
+notes: >-
+  Derived from the published specification and the public C headers of the reference
+  implementation. APEX has no REST resources, so the entity graph is the wire model:
+  frames, the message registries they carry, and the host-side device table.
+
+entities:
+
+- name: Frame
+  kind: wire structure
+  description: The unit of transmission. COBS-encoded, delimited by 0x00.
+  fields:
+  - {name: outer_header, type: ApexV0Hdr_t, size: 4}
+  - {name: inner_payload, type: bytes, size: 0-255}
+  - {name: crc, type: u16, size: 2, algorithm: CRC-16/CCITT-FALSE}
+  max_decoded_bytes: 261
+  max_encoded_bytes: 264
+
+- name: ApexV0Hdr_t
+  kind: wire structure
+  description: The fixed 4-byte outer header present on every frame.
+  fields:
+  - {name: protocol_version, type: u8}
+  - {name: traffic_type, type: u8, references: DeviceClass}
+  - {name: device_id, type: u8, references: DeviceSlot}
+  - {name: payload_length, type: u8}
+
+- name: DeviceClass
+  kind: registry
+  key: traffic_type
+  description: >-
+    The registry that routes a frame's inner payload to a companion specification.
+    traffic_type 0 is CONFIG (core, not a device class); all other values select a class.
+  members:
+  - {traffic_type: 0, name: CONFIG, spec: APEX_Core.md, status: published, note: not a device class}
+  - {traffic_type: 1, name: ACTIVATION, spec: APEX_Device_Class_Activation.md, status: published}
+  - {traffic_type: 2, name: ANALOG_HMI, spec: APEX_Device_Class_Analog_HMI.md, status: published}
+  - {traffic_type: 3, name: WAYFINDING, spec: APEX_Device_Class_Wayfinding.md, status: published}
+  - {traffic_type: 4, name: REPEATER, spec: APEX_Device_Class_Repeater.md, status: published}
+  - {traffic_type: 5, name: USB_FS_HUB, spec: null, status: reserved}
+  extension_policy: >-
+    traffic_type values not enumerated are reserved for future classes; vendor- or
+    platform-specific extensions should be coordinated through the registry rather than
+    reusing CONFIG message IDs or another class's values.
+
+- name: ConfigMessage
+  kind: registry
+  key: msg_id
+  carried_under: traffic_type = 0
+  description: >-
+    The core control message set. A CONFIG frame with payload_length = 0 is the implicit
+    heartbeat and carries no msg_id byte.
+  members:
+  - {msg_id: 0, name: reserved, direction: null, note: never sent}
+  - {msg_id: 1, name: DEVICE_INFO, direction: device-to-host, fields: [device_class_req, interface_flags_req]}
+  - {msg_id: 2, name: CONFIG_REPLY, direction: host-to-device, fields: [ack, assigned_device_id]}
+  - {msg_id: 3, name: NAME_REQUEST, direction: host-to-device, fields: [bytes_allocated], optional: true}
+  - {msg_id: 4, name: NAME_REPLY, direction: device-to-host, fields: [name], optional: true}
+  - {msg_id: 5, name: HOST_STATE, direction: host-to-device, fields: [flight_state], transport: broadcast (device_id 0xFF), cadence: 1-5 Hz}
+  - {msg_id: 6, name: CONFIG_ACK, direction: device-to-host, fields: [assigned_device_id], sent: exactly once}
+
+- name: InterfaceFlags
+  kind: bitfield
+  field: interface_flags_req
+  carried_on: DEVICE_INFO
+  bits:
+  - {bit: 0, name: I2C, pins: [3, 4]}
+  - {bit: 1, name: GPIO, pins: [3, 4], default: true}
+  - {bit: 2, name: USB, pins: [7, 8]}
+  - {bit: 3, name: CVBS video, pins: [7, 8], default: true}
+  - {bits: 4-7, name: reserved}
+
+- name: FlightState
+  kind: enum
+  carried_on: HOST_STATE
+  semantics: advisory context only; the host does not drive any device's class state machine
+  values:
+  - {value: '0x00', name: UNKNOWN}
+  - {value: '0x01', name: STANDBY, meaning: powered on, propellers off}
+  - {value: '0x02', name: PROPS_ON_GND, meaning: propellers on, airframe on the ground}
+  - {value: '0x03', name: PROPS_ON_FLYING, meaning: propellers on, airframe airborne}
+  - {value: '0xFF', name: FAULT, meaning: critical failure of the Host}
+
+- name: DeviceSlot
+  kind: host-side record
+  key: device_id
+  description: >-
+    An entry in the host's bounded device table. The root host is the sole authority for
+    device_id assignment across the whole bus tree.
+  fields:
+  - {name: device_id, type: u8, reserved: {'0x00': unassigned, '0xFF': broadcast}, valid_range: '0x01-0xFE'}
+  - {name: status, type: ApexV0DeviceStatus_t, references: DeviceLifecycleState}
+  - {name: device_class, references: DeviceClass}
+  - {name: name, type: 'char[<256]', optional: true, source: NAME_REPLY}
+  persistence: ephemeral per session
+
+- name: DeviceLifecycleState
+  kind: enum
+  type: ApexV0DeviceStatus_t
+  values: [UNKNOWN, NEW, CONNECTED, EXPENDED, FAULT]
+  detail: lifecycle/neros-lifecycle.yml
+
+- name: ActivationDeviceMessages
+  kind: class message set
+  class: ACTIVATION (traffic_type 1)
+  source: lib/README.md — "Activation class — Device state machine + COMMAND/ACK/STATUS/CAPABILITY"
+  members: [COMMAND, ACK, STATUS, CAPABILITY]
+  note: >-
+    Field-level layouts are defined in spec/APEX_Device_Class_Activation.md and are not
+    reproduced here; the class specs are the source of truth.
+
+relationships:
+- {from: Frame, to: ApexV0Hdr_t, kind: has_one, via: outer_header}
+- {from: ApexV0Hdr_t, to: DeviceClass, kind: belongs_to, via: traffic_type}
+- {from: ApexV0Hdr_t, to: DeviceSlot, kind: belongs_to, via: device_id}
+- {from: Frame, to: ConfigMessage, kind: has_one, via: 'inner_payload[0] (msg_id) when traffic_type = 0'}
+- {from: DEVICE_INFO, to: DeviceClass, kind: belongs_to, via: device_class_req}
+- {from: DEVICE_INFO, to: InterfaceFlags, kind: has_one, via: interface_flags_req}
+- {from: CONFIG_REPLY, to: DeviceSlot, kind: has_one, via: assigned_device_id}
+- {from: CONFIG_ACK, to: DeviceSlot, kind: belongs_to, via: assigned_device_id}
+- {from: HOST_STATE, to: FlightState, kind: has_one, via: flight_state}
+- {from: DeviceSlot, to: DeviceLifecycleState, kind: has_one, via: status}
+- {from: DeviceSlot, to: DeviceClass, kind: belongs_to, via: accepted device_class_req}
+- {from: Host, to: DeviceSlot, kind: has_many, via: device table}
+- {from: DeviceClass, to: ActivationDeviceMessages, kind: has_many, via: 'class_msg_id (ACTIVATION only)'}
+
+topology:
+  default: point-to-point UART (one host, one device)
+  passthrough: >-
+    A node with downstream UART ports forwards frames by device_id. It must complete its
+    own discovery before forwarding anything, and MUST NOT rewrite device_id on
+    upstream-bound frames.
+  multi_class: >-
+    A device implementing more than one class holds one DeviceSlot per class; each class
+    instance is a logically distinct device on the bus with its own device_id.
+
+x-evidence:
+  fetched: '2026-08-04'
+  sources:
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/spec/APEX_Core.md
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/spec/APEX_Device_Classes.md
+    http_status: 200
+  - url: https://raw.githubusercontent.com/Neros-Technologies/APEX/main/lib/include/apex/apex.h
+    http_status: 200

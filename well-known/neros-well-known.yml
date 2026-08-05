@@ -1,0 +1,51 @@
+generated: '2026-08-04'
+method: probed
+source: https://www.neros.tech/
+notes: >-
+  Every /.well-known/ discovery document was probed on the neros.tech apex and www
+  hosts. None is published. No raw files were saved because nothing returned 200, and
+  no WellKnown / SecurityTxt / APICatalog pointer is wired into apis.yml — an index of
+  misses is an audit record, not a discovery surface. The docs/api/developer subdomains
+  do not resolve in DNS at all.
+host: https://www.neros.tech
+documents:
+- path: /.well-known/security.txt
+  status: 404
+- path: /.well-known/openid-configuration
+  status: 404
+- path: /.well-known/oauth-authorization-server
+  status: 404
+- path: /.well-known/api-catalog
+  status: 404
+- path: /.well-known/ai-plugin.json
+  status: 404
+- path: /.well-known/agent-card.json
+  status: 404
+- path: /.well-known/agent.json
+  status: 404
+also_probed:
+- url: https://neros.tech/.well-known/security.txt
+  status: 404
+- url: https://www.neros.tech/llms.txt
+  status: 404
+- url: https://www.neros.tech/sitemap.xml
+  status: 404
+- url: https://www.neros.tech/openapi.json
+  status: 404
+- url: https://www.neros.tech/swagger.json
+  status: 404
+- url: https://www.neros.tech/api-docs
+  status: 404
+- url: https://www.neros.tech/docs
+  status: 404
+- url: https://api.neros.tech/
+  status: 000   # DNS does not resolve
+- url: https://docs.neros.tech/
+  status: 000   # DNS does not resolve
+- url: https://developer.neros.tech/
+  status: 000   # DNS does not resolve
+- url: https://status.neros.tech/
+  status: 000   # DNS does not resolve
+x-evidence:
+  fetched: '2026-08-04'
+  method: curl -sIL, following redirects
