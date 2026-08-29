@@ -11,6 +11,17 @@ description: 'Neros Technologies is an American defense manufacturer founded in 
   connector standard for drone host/payload interoperability, with a C99 reference
   implementation and a hardware development kit published on GitHub.'
 url: https://raw.githubusercontent.com/api-evangelist/neros/refs/heads/main/apis.yml
+deliveryModel:
+  model: unknown
+  open_source: unknown
+  commercial: false
+  callable_host: false
+  label: Delivery model not determined — needs a product licence on record
+  confidence: low
+  source:
+  - repository-unlicensed
+  generated: '2026-08-28'
+  method: derived
 image: https://cdn.prod.website-files.com/65c24ca07768af3ed05a9982/65c28f5597ed1e93b45a67a3_webclip.png
 x-type: company
 x-source: harvest:secondary-market
