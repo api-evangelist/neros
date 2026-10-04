@@ -12,15 +12,18 @@ description: 'Neros Technologies is an American defense manufacturer founded in 
   implementation and a hardware development kit published on GitHub.'
 url: https://raw.githubusercontent.com/api-evangelist/neros/refs/heads/main/apis.yml
 deliveryModel:
-  model: unknown
+  model: library
+  license_evidence:
+    not_product:
+    - neros-technologies/apex
   open_source: unknown
   commercial: false
   callable_host: false
-  label: Delivery model not determined — needs a product licence on record
+  label: Library · distributed through package registries, no callable service
   confidence: low
   source:
-  - repository-unlicensed
-  generated: '2026-08-28'
+  - repository-not-product
+  generated: '2026-09-25'
   method: derived
 accessModel:
   pricing: unknown
@@ -52,7 +55,7 @@ tags:
 - Hardware
 - Manufacturing
 - Protocol
-- Open-Source
+- Open Source
 - Embedded
 tags_raw:
 - Company
@@ -67,6 +70,7 @@ tags_raw:
 - Protocols
 - Open Source
 - Embedded
+- Open-Source
 apis:
 - aid: neros:apex
   name: APEX — Adaptive Payload EXchange
